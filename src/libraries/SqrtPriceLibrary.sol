@@ -10,28 +10,24 @@ library SqrtPriceLibrary {
         return sqrtPriceAX96 < sqrtPriceBX96 ? (sqrtPriceBX96 - sqrtPriceAX96) : (sqrtPriceAX96 - sqrtPriceBX96);
     }
 
-    /// @notice Calculates the percentage difference between two sqrt prices
-    /// @dev i.e. sqrtPriceA - sqrtPriceB / sqrtPriceA
-    /// @param sqrtPriceX96 The first sqrt price
-    /// @param denominatorX96 The denominator for the percentage difference
-    function percentageDifferenceX96(uint160 sqrtPriceX96, uint160 denominatorX96) internal pure returns (uint256) {
-        // sqrt(A)*Q96 - sqrt(B)*Q96
-        uint160 diffX96 = absDifferenceX96(sqrtPriceX96, denominatorX96);
-
-        // (sqrt(A)*Q96 - sqrt(B)*Q96) * Q96 / (sqrt(A)*Q96)
-        return (uint256(diffX96) * Q96) / uint256(denominatorX96);
+    /// @notice Divides two sqrtPriceX96 values, retaining sqrtX96 precision
+    /// @param numeratorX96 The numerator, in sqrtX96 format
+    /// @param denominatorX96 The denominator in sqrtX96 format
+    /// @return The result of the division, in sqrtX96 format
+    function divX96(uint160 numeratorX96, uint160 denominatorX96) internal pure returns (uint256) {
+        return (uint256(numeratorX96) * uint256(Q96)) / uint256(denominatorX96);
     }
 
-    /// @notice Calculates the percentage difference between two sqrt prices in WAD units
-    /// @dev 0.05e18 = 5%
+    /// @notice Calculates the absolute percentage difference between two sqrt prices in WAD units
+    /// @dev 0.05e18 = 5%, for 95 vs 100 or 105 vs 100
     /// @param sqrtPriceX96 The first sqrt price
     /// @param denominatorX96 The denominator for the percentage difference
     /// @return The percentage difference in WAD units
-    function percentageDifferenceWad(uint160 sqrtPriceX96, uint160 denominatorX96) internal pure returns (uint256) {
-        // (sqrt(A)*Q96 - sqrt(B)*Q96) * Q96 / (sqrt(A)*Q96)
-        uint256 _percentageDiffX96 = percentageDifferenceX96(sqrtPriceX96, denominatorX96);
+    function absPercentageDifferenceWad(uint160 sqrtPriceX96, uint160 denominatorX96) internal pure returns (uint256) {
+        uint256 _divX96 = divX96(sqrtPriceX96, denominatorX96);
 
         // convert to WAD
-        return (_percentageDiffX96 ** 2) * 1e18 / Q192;
+        uint256 _percentageDiffWad = ((_divX96 ** 2) * 1e18) / Q192;
+        return (1e18 < _percentageDiffWad) ? _percentageDiffWad - 1e18 : 1e18 - _percentageDiffWad;
     }
 }
