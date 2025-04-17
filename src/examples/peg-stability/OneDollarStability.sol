@@ -7,6 +7,7 @@ import {IPoolManager} from "v4-core/src/interfaces/IPoolManager.sol";
 import {PoolKey} from "v4-core/src/types/PoolKey.sol";
 import {Currency} from "v4-core/src/types/Currency.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
+import {SqrtPriceLibrary} from "../../libraries/SqrtPriceLibrary.sol";
 
 contract OneDollarStability is PegStabilityHook {
     constructor(IPoolManager _poolManager) PegStabilityHook(_poolManager) {}
@@ -25,35 +26,12 @@ contract OneDollarStability is PegStabilityHook {
         override
         returns (uint24)
     {
-        /*
-        obtain the percentage difference in price as WAD
-        i.e. we want to extract `(A - B) / A` from sqrt((A - B) / A) * Q96
-        -> (sqrt((A - B) / A) * Q96)**2
-        -> ((A - B) * Q192) / A
-        -> ((A - B) * 1e18) * Q192 / (A * Q192)
-        
-        to obtain: sqrt((A - B) / A) * Q96
-        -> (sqrt(A - B) / sqrt(A)) * Q96
-        -> (sqrt(A - B) * Q96) / sqrt(A)
-        -> ((sqrt(A) - sqrt(B)) * Q96)) / sqrt(A)
-        -> (sqrt(A)*Q96 - sqrt(B)*Q96) / sqrt(A)
-        -> (sqrt(A)*Q96 - sqrt(B)*Q96) * Q96 / (sqrt(A)*Q96)
-        */
-        // sqrt(A)*Q96 - sqrt(B)*Q96
-        uint160 diffX96 = poolSqrtPriceX96 < referenceSqrtPriceX96
-            ? (referenceSqrtPriceX96 - poolSqrtPriceX96)
-            : poolSqrtPriceX96 - referenceSqrtPriceX96;
-
-        // (sqrt(A)*Q96 - sqrt(B)*Q96) * Q96 / (sqrt(A)*Q96)
-        uint256 percentageDiffX96 = uint256(diffX96 * 2 ** 96) / uint256(referenceSqrtPriceX96);
-
-        // convert to WAD, 0.05e18 = 5%
-        uint256 percentageDiffWad = (percentageDiffX96 ** 2) * 1e18 / 2 ** 192;
+        uint256 absPercentageDiffWad =
+            SqrtPriceLibrary.absPercentageDifferenceWad(uint160(poolSqrtPriceX96), referenceSqrtPriceX96);
 
         // convert percentage WAD to pips, i.e. 0.05e18 = 5% = 50_000
-
-        uint24 fee = uint24(percentageDiffWad / 1e12);
-
+        // where the fee itself is a tenth of the percentage difference
+        uint24 fee = uint24(absPercentageDiffWad / 1e12) / 10;
         return fee;
     }
 }
