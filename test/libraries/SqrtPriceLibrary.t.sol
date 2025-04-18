@@ -30,10 +30,19 @@ contract SqrtPriceLibraryTest is Test {
         assertApproxEqRel(result, 0.07e18, 0.00001e18);
     }
 
-    function test_fuzz_percentageDifferenceWad(uint160 sqrtPriceX96, uint256 targetWad) public pure {
-        sqrtPriceX96 = uint160(bound(sqrtPriceX96, TickMath.MIN_SQRT_PRICE, TickMath.MAX_SQRT_PRICE));
+    function test_percentageDifferenceWadEq() public pure {
+        uint160 sqrtPriceX96 = uint160(2 ** 96);
+        uint256 result = SqrtPriceLibrary.absPercentageDifferenceWad(sqrtPriceX96, sqrtPriceX96);
+        assertEq(result, 0);
+    }
+
+    function test_fuzz_percentageDifferenceWad(uint256 price, uint256 targetWad) public pure {
+        price = bound(price, 0.00001e18, 100_000_000e18);
+        uint160 sqrtPriceX96 =
+            uint160(FixedPointMathLib.sqrt(price) * SqrtPriceLibrary.Q96 / FixedPointMathLib.sqrt(1e18));
+
         // multiplier to determine the newSqrtPriceX96
-        targetWad = bound(targetWad, 0.00001e18, 3e18);
+        targetWad = bound(targetWad, 0.00001e18, 5e18);
         uint160 newSqrtPriceX96 =
             uint160((uint256(sqrtPriceX96) * FixedPointMathLib.sqrt(targetWad)) / FixedPointMathLib.sqrt(1e18));
         vm.assume(newSqrtPriceX96 < TickMath.MAX_SQRT_PRICE);
