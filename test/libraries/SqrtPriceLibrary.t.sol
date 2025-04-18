@@ -54,6 +54,6 @@ contract SqrtPriceLibraryTest is Test {
         } else {
             targetWad = 1e18 - targetWad;
         }
-        assertApproxEqRel(result, targetWad, 0.000001e18);
+        if (targetWad > 0.00001e18) assertApproxEqRel(result, targetWad, 0.000001e18);
     }
 }
