@@ -66,7 +66,7 @@ contract ParityStabilityTest is Deployers {
         );
     }
 
-    function test_swap(bool zeroForOne, bool exactIn) public {
+    function test_fuzz_swap(bool zeroForOne, bool exactIn) public {
         int256 amountSpecified = exactIn ? -int256(1e18) : int256(1e18);
         BalanceDelta result = swap(key, zeroForOne, amountSpecified, ZERO_BYTES);
         if (zeroForOne) {
@@ -80,5 +80,42 @@ contract ParityStabilityTest is Deployers {
                 : assertLt(int256(result.amount1()), amountSpecified);
             exactIn ? assertGt(int256(result.amount0()), 0) : assertEq(int256(result.amount0()), amountSpecified);
         }
+    }
+
+    /// @dev swaps moving away from peg are charged a high fee
+    function test_fuzz_high_fee(bool zeroForOne) public {
+        BalanceDelta ref = swap(key, zeroForOne, -int256(0.1e18), ZERO_BYTES);
+
+        // move the pool price to off peg
+        swap(key, zeroForOne, -int256(1000e18), ZERO_BYTES);
+
+        // TODO: extract the swapFee from event and assert its greater
+
+        // move the pool price away from peg
+        BalanceDelta highFeeSwap = swap(key, zeroForOne, -int256(0.1e18), ZERO_BYTES);
+
+        // output of the second swap is much less
+        // highFeeSwap + offset < ref
+        zeroForOne
+            ? assertLt(highFeeSwap.amount1() + int128(0.001e18), ref.amount1())
+            : assertLt(highFeeSwap.amount0() + int128(0.001e18), ref.amount0());
+    }
+
+    /// @dev swaps moving towards peg are charged a low fee
+    function test_fuzz_low_fee(bool zeroForOne) public {
+        // move the pool price to off peg
+        swap(key, !zeroForOne, -int256(1000e18), ZERO_BYTES);
+
+        // move the pool price away from peg
+        BalanceDelta highFeeSwap = swap(key, !zeroForOne, -int256(0.1e18), ZERO_BYTES);
+
+        // swap towards the peg
+        BalanceDelta lowFeeSwap = swap(key, zeroForOne, -int256(0.1e18), ZERO_BYTES);
+
+        // output of the second swap is much higher
+        // lowFeeSwap > highFeeSwap
+        zeroForOne
+            ? assertGt(lowFeeSwap.amount1(), highFeeSwap.amount1())
+            : assertGt(lowFeeSwap.amount0(), highFeeSwap.amount0());
     }
 }
