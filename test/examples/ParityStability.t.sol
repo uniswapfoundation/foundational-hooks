@@ -13,6 +13,7 @@ import {CurrencyLibrary, Currency} from "v4-core/src/types/Currency.sol";
 import {PoolSwapTest} from "v4-core/src/test/PoolSwapTest.sol";
 import {ParityStability} from "../../src/examples/peg-stability/ParityStability.sol";
 import {StateLibrary} from "v4-core/src/libraries/StateLibrary.sol";
+import {LPFeeLibrary} from "v4-core/src/libraries/LPFeeLibrary.sol";
 
 import {LiquidityAmounts} from "v4-core/test/utils/LiquidityAmounts.sol";
 import {IPositionManager} from "v4-periphery/src/interfaces/IPositionManager.sol";
@@ -44,7 +45,7 @@ contract ParityStabilityTest is Deployers {
         hook = ParityStability(flags);
 
         // Create the pool
-        key = PoolKey(currency0, currency1, 3000, 60, IHooks(hook));
+        key = PoolKey(currency0, currency1, LPFeeLibrary.DYNAMIC_FEE_FLAG, 60, IHooks(hook));
         poolId = key.toId();
         manager.initialize(key, SQRT_PRICE_1_1);
 
@@ -52,6 +53,32 @@ contract ParityStabilityTest is Deployers {
         tickLower = TickMath.minUsableTick(key.tickSpacing);
         tickUpper = TickMath.maxUsableTick(key.tickSpacing);
 
-        uint128 liquidityAmount = 100e18;
+        uint256 liquidityAmount = 10_000e18;
+        modifyLiquidityRouter.modifyLiquidity(
+            key,
+            IPoolManager.ModifyLiquidityParams({
+                tickLower: tickLower,
+                tickUpper: tickUpper,
+                liquidityDelta: int256(liquidityAmount),
+                salt: bytes32(0)
+            }),
+            ZERO_BYTES
+        );
+    }
+
+    function test_swap(bool zeroForOne, bool exactIn) public {
+        int256 amountSpecified = exactIn ? -int256(1e18) : int256(1e18);
+        BalanceDelta result = swap(key, zeroForOne, amountSpecified, ZERO_BYTES);
+        if (zeroForOne) {
+            exactIn
+                ? assertEq(int256(result.amount0()), amountSpecified)
+                : assertLt(int256(result.amount0()), amountSpecified);
+            exactIn ? assertGt(int256(result.amount1()), 0) : assertEq(int256(result.amount1()), amountSpecified);
+        } else {
+            exactIn
+                ? assertEq(int256(result.amount1()), amountSpecified)
+                : assertLt(int256(result.amount1()), amountSpecified);
+            exactIn ? assertGt(int256(result.amount0()), 0) : assertEq(int256(result.amount0()), amountSpecified);
+        }
     }
 }
