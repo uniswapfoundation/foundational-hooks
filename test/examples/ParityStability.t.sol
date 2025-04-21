@@ -18,11 +18,13 @@ import {LPFeeLibrary} from "v4-core/src/libraries/LPFeeLibrary.sol";
 import {LiquidityAmounts} from "v4-core/test/utils/LiquidityAmounts.sol";
 import {IPositionManager} from "v4-periphery/src/interfaces/IPositionManager.sol";
 import {Deployers} from "v4-core/test/utils/Deployers.sol";
+import {SwapFeeEventAsserter} from "../utils/SwapFeeEventAsserter.sol";
 
 contract ParityStabilityTest is Deployers {
     using PoolIdLibrary for PoolKey;
     using CurrencyLibrary for Currency;
     using StateLibrary for IPoolManager;
+    using SwapFeeEventAsserter for Vm.Log[];
 
     ParityStability hook;
     PoolId poolId;
@@ -84,15 +86,19 @@ contract ParityStabilityTest is Deployers {
 
     /// @dev swaps moving away from peg are charged a high fee
     function test_fuzz_high_fee(bool zeroForOne) public {
+        vm.recordLogs();
         BalanceDelta ref = swap(key, zeroForOne, -int256(0.1e18), ZERO_BYTES);
+        Vm.Log[] memory recordedLogs = vm.getRecordedLogs();
+        recordedLogs.assertSwapFee(0);
 
         // move the pool price to off peg
         swap(key, zeroForOne, -int256(1000e18), ZERO_BYTES);
 
-        // TODO: extract the swapFee from event and assert its greater
-
         // move the pool price away from peg
+        vm.recordLogs();
         BalanceDelta highFeeSwap = swap(key, zeroForOne, -int256(0.1e18), ZERO_BYTES);
+        recordedLogs = vm.getRecordedLogs();
+        recordedLogs.assertSwapFee(zeroForOne ? 17356 : 21002);
 
         // output of the second swap is much less
         // highFeeSwap + offset < ref
@@ -107,10 +113,18 @@ contract ParityStabilityTest is Deployers {
         swap(key, !zeroForOne, -int256(1000e18), ZERO_BYTES);
 
         // move the pool price away from peg
+        vm.recordLogs();
         BalanceDelta highFeeSwap = swap(key, !zeroForOne, -int256(0.1e18), ZERO_BYTES);
+        Vm.Log[] memory recordedLogs = vm.getRecordedLogs();
+        uint24 higherFee = recordedLogs.getSwapFeeFromEvent();
 
         // swap towards the peg
+        vm.recordLogs();
         BalanceDelta lowFeeSwap = swap(key, zeroForOne, -int256(0.1e18), ZERO_BYTES);
+        recordedLogs = vm.getRecordedLogs();
+        uint24 lowerFee = recordedLogs.getSwapFeeFromEvent();
+        assertGt(higherFee, lowerFee);
+        assertEq(lowerFee, 10); // 0.1 bip
 
         // output of the second swap is much higher
         // lowFeeSwap > highFeeSwap
