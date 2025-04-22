@@ -56,4 +56,58 @@ contract SqrtPriceLibraryTest is Test {
         }
         if (targetWad > 0.00001e18) assertApproxEqRel(result, targetWad, 0.000001e18);
     }
+
+    function test_exchangeRateToSqrtPriceX96() public pure {
+        uint256 exchangeRateWad = 1e18;
+        uint160 sqrtPriceX96 = SqrtPriceLibrary.exchangeRateToSqrtPriceX96(exchangeRateWad);
+        assertEq(sqrtPriceX96, SqrtPriceLibrary.Q96);
+
+        exchangeRateWad = 1.04e18;
+        sqrtPriceX96 = SqrtPriceLibrary.exchangeRateToSqrtPriceX96(exchangeRateWad);
+        // 10 bips of error
+        assertApproxEqAbs(
+            sqrtPriceX96, 77689605131987355976724378426, SqrtPriceLibrary.fractionToSqrtPriceX96(0.001e18, 1e18), "1.04"
+        );
+
+        exchangeRateWad = 1.04444444444444e18;
+        sqrtPriceX96 = SqrtPriceLibrary.exchangeRateToSqrtPriceX96(exchangeRateWad);
+        // 10 bips of error
+        assertApproxEqAbs(
+            sqrtPriceX96,
+            77524131876742691217855037000,
+            SqrtPriceLibrary.fractionToSqrtPriceX96(0.001e18, 1e18),
+            "1.04444444444444"
+        );
+
+        exchangeRateWad = 1.05555555555555e18;
+        sqrtPriceX96 = SqrtPriceLibrary.exchangeRateToSqrtPriceX96(exchangeRateWad);
+        // 10 bips of error
+        assertApproxEqAbs(
+            sqrtPriceX96,
+            77115030699858018365419924960,
+            SqrtPriceLibrary.fractionToSqrtPriceX96(0.001e18, 1e18),
+            "1.05555555555555"
+        );
+
+        exchangeRateWad = 2.129803478192837e18;
+        sqrtPriceX96 = SqrtPriceLibrary.exchangeRateToSqrtPriceX96(exchangeRateWad);
+        // 10 bips of error
+        assertApproxEqAbs(
+            sqrtPriceX96,
+            54288746954863770371846037548,
+            SqrtPriceLibrary.fractionToSqrtPriceX96(0.001e18, 1e18),
+            "2.129803478192837"
+        );
+    }
+
+    function test_fuzz_fractionToSqrtPriceX96(uint256 numerator, uint256 denominator) public pure {
+        numerator = bound(numerator, 1e18, 10_000_000e18);
+        denominator = bound(denominator, 1e18, 10_000_000e18);
+        SqrtPriceLibrary.fractionToSqrtPriceX96(numerator, denominator);
+    }
+
+    function test_fuzz_exchangeRateToSqrtPriceX96(uint256 exchangeRateWad) public pure {
+        exchangeRateWad = bound(exchangeRateWad, 1e18, 10_000_000e18);
+        SqrtPriceLibrary.exchangeRateToSqrtPriceX96(exchangeRateWad);
+    }
 }
