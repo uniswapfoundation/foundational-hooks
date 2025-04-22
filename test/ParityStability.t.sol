@@ -198,4 +198,24 @@ contract ParityStabilityTest is Deployers {
             ? assertGt(lowFeeSwap.amount1(), highFeeSwap.amount1())
             : assertGt(lowFeeSwap.amount0(), highFeeSwap.amount0());
     }
+
+    function test_fuzz_linear_fee(uint256 amount) public {
+        vm.assume(0.5e18 < amount && amount <= 48.75e18);
+        // move the pool price to off peg
+        swap(key, false, -int256(amount), ZERO_BYTES);
+
+        (uint160 poolSqrtPriceX96, , , ) = manager.getSlot0(key.toId());
+        uint256 absPercentageDiffWad = SqrtPriceLibrary
+            .absPercentageDifferenceWad(
+                uint160(poolSqrtPriceX96),
+                SqrtPriceLibrary.exchangeRateToSqrtPriceX96(exchangeRate)
+            );
+        uint24 expectedFee = uint24(absPercentageDiffWad / 1e12);
+        // move the pool price away from peg
+        vm.recordLogs();
+        BalanceDelta swap = swap(key, false, -int256(0.1e18), ZERO_BYTES);
+        Vm.Log[] memory recordedLogs = vm.getRecordedLogs();
+        uint24 swapFee = recordedLogs.getSwapFeeFromEvent();
+        assertEq(swapFee, expectedFee);
+    }
 }
