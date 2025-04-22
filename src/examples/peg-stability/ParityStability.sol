@@ -64,10 +64,7 @@ contract ParityStability is PegStabilityHook {
         // strongly pegged pools, the reference price is from rateProvider
         // returned in sqrtX96 format
         return
-            uint160(
-                (FixedPointMathLib.sqrt(1e18) * 2 ** 96) /
-                    FixedPointMathLib.sqrt(rateProvider.getRate())
-            );
+            SqrtPriceLibrary.exchangeRateToSqrtPriceX96(rateProvider.getRate());
     }
 
     /// @dev linearly scale the swap fee as a tenth of the percentage difference between pool price and reference price

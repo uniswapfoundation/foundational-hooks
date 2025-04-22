@@ -21,6 +21,7 @@ import {Deployers} from "v4-core/test/utils/Deployers.sol";
 import {IRateProvider} from "../src/interfaces/IRateProvider.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 import {SwapFeeEventAsserter} from "./utils/SwapFeeEventAsserter.sol";
+import {SqrtPriceLibrary} from "../src/libraries/SqrtPriceLibrary.sol";
 
 contract ParityStabilityTest is Deployers {
     // Hook configs. TODO: configure
@@ -74,11 +75,8 @@ contract ParityStabilityTest is Deployers {
         );
 
         // initial price of the pool according to exchange rate
-        // TODO: initialize pool with expected initial price
-
-        uint160 initialPrice = uint160(
-            (FixedPointMathLib.sqrt(1e18) * 2 ** 96) /
-                FixedPointMathLib.sqrt(exchangeRate) //
+        uint160 initialPrice = SqrtPriceLibrary.exchangeRateToSqrtPriceX96(
+            exchangeRate
         );
         poolId = key.toId();
         manager.initialize(key, initialPrice);
