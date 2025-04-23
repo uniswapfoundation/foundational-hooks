@@ -20,9 +20,9 @@ contract SwapScript is Script, Constants, Config {
     // --- Parameters to Configure --- //
     /////////////////////////////////////
 
-    // PoolSwapTest Contract address, default to the anvil address
+    // PoolSwapTest Contract address, sepolia
     PoolSwapTest swapRouter =
-        PoolSwapTest(0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9);
+        PoolSwapTest(0x9B6b46e2c869aa39918Db7f52f5557FE577B6eEe);
 
     // --- pool configuration --- //
     // fees paid by swappers that accrue to liquidity providers
