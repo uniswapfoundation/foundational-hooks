@@ -14,11 +14,13 @@ import {LPFeeLibrary} from "v4-core/src/libraries/LPFeeLibrary.sol";
 import {IRateProvider} from "../src/interfaces/IRateProvider.sol";
 import {PoolId} from "v4-core/src/types/PoolId.sol";
 
+import {Constants} from "./sepolia/Constants.sol";
+import {Config} from "./sepolia/Config.sol";
+
 /// @notice Mines the address and deploys the ParityStability.sol Hook contract
-contract ParityStabilityScript is Script {
+contract ParityStabilityScript is Script, Constants, Config {
     // TODO: configure
     // sepolia configurations
-    address POOLMANAGER = 0xE03A1074c86CFeDd5C142C4F04F1a1536e203543;
     IRateProvider rateProvider =
         IRateProvider(0x44Ad1be5B5912a497dAa147B7A3c55DC6067BFcF);
     uint24 minFee = 100;
@@ -26,9 +28,6 @@ contract ParityStabilityScript is Script {
 
     // Pool configs
     // TODO: configure 0 zero values
-    Currency currency0 = Currency.wrap(address(0)); // for ETH
-    Currency currency1 =
-        Currency.wrap(0x8d7F20137041334FBd7c87796f03b1999770Cc5f); // configure ezETH
     int24 tickSpacing = 60;
     uint160 startingPrice; // starting price in sqrtPriceX96
 
@@ -58,7 +57,7 @@ contract ParityStabilityScript is Script {
         // Deploy the hook using CREATE2
         vm.startBroadcast();
         ParityStability parityStability = new ParityStability{salt: salt}(
-            IPoolManager(POOLMANAGER),
+            POOLMANAGER,
             rateProvider,
             minFee,
             maxFee
@@ -76,7 +75,7 @@ contract ParityStabilityScript is Script {
             hooks: IHooks(address(parityStability))
         });
 
-        IPoolManager(POOLMANAGER).initialize(pool, startingPrice);
+        POOLMANAGER.initialize(pool, startingPrice);
         vm.stopBroadcast();
 
         console2.log("poolId of the deployed pool - ");
