@@ -1,21 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {PegStabilityHook} from "../../PegStabilityHook.sol";
+import {PegStabilityHook} from "./PegStabilityHook.sol";
 
 import {IPoolManager} from "v4-core/src/interfaces/IPoolManager.sol";
 import {PoolKey} from "v4-core/src/types/PoolKey.sol";
 import {Currency} from "v4-core/src/types/Currency.sol";
 import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
-import {SqrtPriceLibrary} from "../../libraries/SqrtPriceLibrary.sol";
-import {IRateProvider} from "../../interfaces/IRateProvider.sol";
+import {SqrtPriceLibrary} from "./libraries/SqrtPriceLibrary.sol";
+import {IRateProvider} from "./interfaces/IRateProvider.sol";
 
-/// @title Parity Stability
+/// @title RenzoStability
 /// @notice A peg stability hook, for pairs that trade at a 1:1 ratio
 /// The hook charges 1 bip for trades moving towards the peg
 /// otherwise it charges a linearly-scaled fee based on the distance from the peg
 /// i.e. if the pool price is off by 0.05% the fee is 0.05%, if the price is off by 0.50% the fee is 0.5%
-contract ParityStability is PegStabilityHook {
+/// In the associated pool, Token 0 should be ETH and Token 1 should be ezETH
+contract RenzoStability is PegStabilityHook {
     IRateProvider public immutable rateProvider;
 
     // Fee bps range where 1_000_000 = 100 %
@@ -57,6 +58,11 @@ contract ParityStability is PegStabilityHook {
         maxFeeBps = _maxFee;
     }
 
+    /**
+     * @notice  Get the reference price of ezETH
+     * @dev     The reference price is stored in the rate provider.  It then converts to 1/ezETH price to match the pool price which is priced in ezETH
+     * @return  uint160  .
+     */
     function _referencePriceX96(
         Currency,
         Currency
@@ -67,8 +73,17 @@ contract ParityStability is PegStabilityHook {
             SqrtPriceLibrary.exchangeRateToSqrtPriceX96(rateProvider.getRate());
     }
 
-    /// @dev linearly scale the swap fee as a tenth of the percentage difference between pool price and reference price
-    /// i.e. if pool price is off by 0.05% the fee is 0.05%, if the price is off by 0.50% the fee is 0.5%
+    /// @dev
+    
+    /**
+     * @notice  Calculates the price for a swap
+     * @dev      linearly scale the swap fee as a tenth of the percentage difference between pool price and reference price
+     *           i.e. if pool price is off by 0.05% the fee is 0.05%, if the price is off by 0.50% the fee is 0.5%
+     * @param   zeroForOne  True if buying ezETH, false if selling ezETH
+     * @param   poolSqrtPriceX96  Current pool price
+     * @param   referenceSqrtPriceX96  Reference price obtained from the rate provider
+     * @return  uint24  Fee charged to the user - fee in pips, i.e. 3000 = 0.3%
+     */
     function _calculateFee(
         Currency,
         Currency,

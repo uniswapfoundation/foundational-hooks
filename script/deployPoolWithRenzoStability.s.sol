@@ -8,7 +8,7 @@ import {IPoolManager} from "v4-core/src/interfaces/IPoolManager.sol";
 import {PoolKey} from "v4-core/src/types/PoolKey.sol";
 import {Currency, CurrencyLibrary} from "v4-core/src/types/Currency.sol";
 import {HookMiner} from "v4-periphery/src/utils/HookMiner.sol";
-import {ParityStability} from "../src/examples/peg-stability/ParityStability.sol";
+import {RenzoStability} from "../src/RenzoStability.sol";
 import {SqrtPriceLibrary} from "../src/libraries/SqrtPriceLibrary.sol";
 import {LPFeeLibrary} from "v4-core/src/libraries/LPFeeLibrary.sol";
 import {IRateProvider} from "../src/interfaces/IRateProvider.sol";
@@ -17,8 +17,8 @@ import {PoolId} from "v4-core/src/types/PoolId.sol";
 import {Constants} from "./sepolia/Constants.sol";
 import {Config} from "./sepolia/Config.sol";
 
-/// @notice Mines the address and deploys the ParityStability.sol Hook contract
-contract ParityStabilityScript is Script, Constants, Config {
+/// @notice Mines the address and deploys the RenzoStability.sol Hook contract
+contract RenzoStabilityScript is Script, Constants, Config {
     // TODO: configure
     // sepolia configurations
     IRateProvider rateProvider =
@@ -47,7 +47,7 @@ contract ParityStabilityScript is Script, Constants, Config {
         (address hookAddress, bytes32 salt) = HookMiner.find(
             CREATE2_FACTORY,
             flags,
-            type(ParityStability).creationCode,
+            type(RenzoStability).creationCode,
             constructorArgs
         );
 
@@ -56,15 +56,15 @@ contract ParityStabilityScript is Script, Constants, Config {
         );
         // Deploy the hook using CREATE2
         vm.startBroadcast();
-        ParityStability parityStability = new ParityStability{salt: salt}(
+        RenzoStability renzoStability = new RenzoStability{salt: salt}(
             POOLMANAGER,
             rateProvider,
             minFee,
             maxFee
         );
         require(
-            address(parityStability) == hookAddress,
-            "ParityStabilityScript: hook address mismatch"
+            address(renzoStability) == hookAddress,
+            "RenzoStability: hook address mismatch"
         );
         //  deploy pool
         PoolKey memory pool = PoolKey({
@@ -72,7 +72,7 @@ contract ParityStabilityScript is Script, Constants, Config {
             currency1: currency1,
             fee: LPFeeLibrary.DYNAMIC_FEE_FLAG,
             tickSpacing: tickSpacing,
-            hooks: IHooks(address(parityStability))
+            hooks: IHooks(address(renzoStability))
         });
 
         POOLMANAGER.initialize(pool, startingPrice);

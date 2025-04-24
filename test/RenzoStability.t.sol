@@ -11,7 +11,7 @@ import {BalanceDelta} from "v4-core/src/types/BalanceDelta.sol";
 import {PoolId, PoolIdLibrary} from "v4-core/src/types/PoolId.sol";
 import {CurrencyLibrary, Currency} from "v4-core/src/types/Currency.sol";
 import {PoolSwapTest} from "v4-core/src/test/PoolSwapTest.sol";
-import {ParityStability} from "../src/examples/peg-stability/ParityStability.sol";
+import {RenzoStability} from "../src/RenzoStability.sol";
 import {StateLibrary} from "v4-core/src/libraries/StateLibrary.sol";
 import {LPFeeLibrary} from "v4-core/src/libraries/LPFeeLibrary.sol";
 
@@ -23,7 +23,7 @@ import {FixedPointMathLib} from "solmate/src/utils/FixedPointMathLib.sol";
 import {SwapFeeEventAsserter} from "./utils/SwapFeeEventAsserter.sol";
 import {SqrtPriceLibrary} from "../src/libraries/SqrtPriceLibrary.sol";
 
-contract ParityStabilityTest is Deployers {
+contract RenzoStabilityTest is Deployers {
     // Hook configs. TODO: configure
     IRateProvider rateProvider = IRateProvider(makeAddr("rateProvider"));
     uint256 exchangeRate = 1046726277868365115;
@@ -35,7 +35,7 @@ contract ParityStabilityTest is Deployers {
     using StateLibrary for IPoolManager;
     using SwapFeeEventAsserter for Vm.Log[];
 
-    ParityStability hook;
+    RenzoStability hook;
     PoolId poolId;
 
     uint256 tokenId;
@@ -59,11 +59,11 @@ contract ParityStabilityTest is Deployers {
             maxFee
         ); //Add all the necessary constructor arguments from the hook
         deployCodeTo(
-            "ParityStability.sol:ParityStability",
+            "RenzoStability.sol:RenzoStability",
             constructorArgs,
             flags
         );
-        hook = ParityStability(flags);
+        hook = RenzoStability(flags);
 
         // Create the pool
         key = PoolKey(
@@ -213,7 +213,7 @@ contract ParityStabilityTest is Deployers {
         uint24 expectedFee = uint24(absPercentageDiffWad / 1e12);
         // move the pool price away from peg
         vm.recordLogs();
-        BalanceDelta swap = swap(key, false, -int256(0.1e18), ZERO_BYTES);
+        swap(key, false, -int256(0.1e18), ZERO_BYTES);
         Vm.Log[] memory recordedLogs = vm.getRecordedLogs();
         uint24 swapFee = recordedLogs.getSwapFeeFromEvent();
         assertEq(swapFee, expectedFee);
