@@ -57,9 +57,10 @@ contract SwapScript is Script, Constants, Config {
         // Swap 100e18 token0 into token1 //
         // ------------------------------ //
         bool zeroForOne = true;
+        int256 amount = 0.01e18;
         IPoolManager.SwapParams memory params = IPoolManager.SwapParams({
             zeroForOne: zeroForOne,
-            amountSpecified: -int256(0.01e18),
+            amountSpecified: zeroForOne ? -amount : amount,
             sqrtPriceLimitX96: zeroForOne ? MIN_PRICE_LIMIT : MAX_PRICE_LIMIT // unlimited impact
         });
 
@@ -71,7 +72,7 @@ contract SwapScript is Script, Constants, Config {
         bytes memory hookData = new bytes(0);
         vm.broadcast();
         zeroForOne
-            ? swapRouter.swap{value: 0.01e18}(
+            ? swapRouter.swap{value: uint256(amount)}(
                 pool,
                 params,
                 testSettings,
