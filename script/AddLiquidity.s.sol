@@ -26,12 +26,12 @@ contract AddLiquidityScript is Script, Constants, Config {
 
     // --- pool configuration --- //
     // fees paid by swappers that accrue to liquidity providers
-    uint24 lpFee = LPFeeLibrary.DYNAMIC_FEE_FLAG; // 0.30%
+    uint24 lpFee = LPFeeLibrary.DYNAMIC_FEE_FLAG;
     int24 tickSpacing = 60;
 
     // --- liquidity position configuration --- //
-    uint256 public token0Amount = 1e18;
-    uint256 public token1Amount = 1e18;
+    uint256 public token0Amount = 9.9e18;
+    uint256 public token1Amount = 9.9e18;
 
     // range of the position
     int24 tickLower = -600; // must be a multiple of tickSpacing

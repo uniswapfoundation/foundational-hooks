@@ -7,7 +7,7 @@ import {PoolKey} from "v4-core/src/types/PoolKey.sol";
 import {PoolSwapTest} from "v4-core/src/test/PoolSwapTest.sol";
 import {TickMath} from "v4-core/src/libraries/TickMath.sol";
 import {CurrencyLibrary, Currency} from "v4-core/src/types/Currency.sol";
-
+import {LPFeeLibrary} from "v4-core/src/libraries/LPFeeLibrary.sol";
 import {Constants} from "./sepolia/Constants.sol";
 import {Config} from "./sepolia/Config.sol";
 
@@ -26,8 +26,10 @@ contract SwapScript is Script, Constants, Config {
 
     // --- pool configuration --- //
     // fees paid by swappers that accrue to liquidity providers
-    uint24 lpFee = 3000; // 0.30%
+    uint24 lpFee = LPFeeLibrary.DYNAMIC_FEE_FLAG;
     int24 tickSpacing = 60;
+
+    address caller = 0xAd0f3f4BEC42CdA68d2cd31301B3C3De3B0F50E2;
 
     function run() external {
         PoolKey memory pool = PoolKey({
@@ -39,10 +41,17 @@ contract SwapScript is Script, Constants, Config {
         });
 
         // approve tokens to the swap router
-        vm.broadcast();
-        token0.approve(address(swapRouter), type(uint256).max);
-        vm.broadcast();
-        token1.approve(address(swapRouter), type(uint256).max);
+        if (!currency0.isAddressZero()) {
+            vm.broadcast();
+            token0.approve(address(swapRouter), type(uint256).max);
+        }
+        if (
+            !currency1.isAddressZero() &&
+            token1.allowance(caller, address(swapRouter)) < type(uint256).max
+        ) {
+            vm.broadcast();
+            token1.approve(address(swapRouter), type(uint256).max);
+        }
 
         // ------------------------------ //
         // Swap 100e18 token0 into token1 //
@@ -50,7 +59,7 @@ contract SwapScript is Script, Constants, Config {
         bool zeroForOne = true;
         IPoolManager.SwapParams memory params = IPoolManager.SwapParams({
             zeroForOne: zeroForOne,
-            amountSpecified: 100e18,
+            amountSpecified: -int256(0.01e18),
             sqrtPriceLimitX96: zeroForOne ? MIN_PRICE_LIMIT : MAX_PRICE_LIMIT // unlimited impact
         });
 
@@ -61,6 +70,13 @@ contract SwapScript is Script, Constants, Config {
 
         bytes memory hookData = new bytes(0);
         vm.broadcast();
-        swapRouter.swap(pool, params, testSettings, hookData);
+        zeroForOne
+            ? swapRouter.swap{value: 0.01e18}(
+                pool,
+                params,
+                testSettings,
+                hookData
+            )
+            : swapRouter.swap(pool, params, testSettings, hookData);
     }
 }
