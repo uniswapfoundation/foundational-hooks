@@ -1,66 +1,29 @@
-## Foundry
+## Foundational Hooks
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+# :construction: UNDER CONSTRUCTION :construction: 
 
-Foundry consists of:
+> *Minimal Uniswap v4 Hooks for supporting targetted asset pairs*
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+*requires [foundry](https://book.getfoundry.sh/)*
 
-## Documentation
+---
 
-https://book.getfoundry.sh/
+Uniswap Foundation's *foundational hooks* serve as an opinioniated extension to OpenZeppelin's Uniswap Hooks Library to better support particular asset pairs. The repo identifies the following the asset pairs where Uniswap v4 Hooks can improve liquidity profitability, liquidity depth, and/or price-execution:
 
-## Usage
+* Blue chip (volatile pairs): ETH/USD, BTC/USD
+* Stable Pairs: USDa/USDb
+* Correlated Pairs: ETH/LST, USD/yield-bearing USD
 
-### Build
+---
 
-```shell
-$ forge build
+# Table of Contents
+
 ```
-
-### Test
-
-```shell
-$ forge test
-```
-
-### Format
-
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
+src
+├── PegStabilityHook.sol         // abstract implementation where dynamic fees are used to incentivize peg stability
+├── examples
+│   └── peg-stability
+│       └── ParityStability.sol  // an example implementation of PegStabilityHook, where an exchange rate of 1 is incentivized via swap fees
+└── libraries
+    └── SqrtPriceLibrary.sol     // a helper library for performing sqrtPriceX96 arithmetic
 ```
