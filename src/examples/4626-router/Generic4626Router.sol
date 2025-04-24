@@ -1,23 +1,29 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {toBeforeSwapDelta, BeforeSwapDelta, BeforeSwapDeltaLibrary} from "@uniswap/v4-core/src/types/BeforeSwapDelta.sol";
-import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
-import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
-import {PoolId} from "@uniswap/v4-core/src/types/PoolId.sol";
-import {SafeCast} from "@uniswap/v4-core/src/libraries/SafeCast.sol";
-import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
-import {Hooks} from "@uniswap/v4-core/src/libraries/Hooks.sol";
-import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import {
+    toBeforeSwapDelta,
+    BeforeSwapDelta,
+    BeforeSwapDeltaLibrary
+} from "v4-core/src/types/BeforeSwapDelta.sol";
+import {Currency} from "v4-core/src/types/Currency.sol";
+import {PoolKey} from "v4-core/src/types/PoolKey.sol";
+import {PoolId} from "v4-core/src/types/PoolId.sol";
+import {SafeCast} from "v4-core/src/libraries/SafeCast.sol";
+import {IHooks} from "v4-core/src/interfaces/IHooks.sol";
+import {Hooks} from "v4-core/src/libraries/Hooks.sol";
+import {IPoolManager} from "v4-core/src/interfaces/IPoolManager.sol";
 
-import {BaseHook} from "v4-periphery/src/base/hooks/BaseHook.sol";
+import {BaseHook} from "uniswap-hooks/base/BaseHook.sol";
+import {CurrencySettler} from "uniswap-hooks/utils/CurrencySettler.sol";
+
 import {DeltaResolver} from "v4-periphery/src/base/DeltaResolver.sol";
 
 import {ERC4626, ERC20} from "solmate/src/mixins/ERC4626.sol";
 
 /// @title Generic Router for ERC4626 Token Wrappers
 /// @dev Only supports symmetric ERC4626 Vaults
-contract Generic4626Router is BaseHook, DeltaResolver {
+contract Generic4626Router is BaseHook {
     using SafeCast for int256;
     using SafeCast for uint256;
 
@@ -33,7 +39,9 @@ contract Generic4626Router is BaseHook, DeltaResolver {
 
     mapping(PoolId poolId => PoolDetails details) public poolDetails;
 
-    constructor(IPoolManager _manager) BaseHook(_manager) {}
+    constructor(
+        IPoolManager _manager
+    ) BaseHook(_manager) {}
 
     function initializePool(
         ERC4626 vault
@@ -67,36 +75,30 @@ contract Generic4626Router is BaseHook, DeltaResolver {
     }
 
     /// @inheritdoc BaseHook
-    function getHookPermissions()
-        public
-        pure
-        override
-        returns (Hooks.Permissions memory)
-    {
-        return
-            Hooks.Permissions({
-                beforeInitialize: true, // Validate settings
-                beforeAddLiquidity: true, // Disallow adding liquidity
-                beforeSwap: true, // Handle wrapping/unwrapping
-                beforeSwapReturnDelta: true, // Async Swap via the vault
-                afterSwap: false,
-                afterInitialize: false,
-                beforeRemoveLiquidity: false,
-                afterAddLiquidity: false,
-                afterRemoveLiquidity: false,
-                beforeDonate: false,
-                afterDonate: false,
-                afterSwapReturnDelta: false,
-                afterAddLiquidityReturnDelta: false,
-                afterRemoveLiquidityReturnDelta: false
-            });
+    function getHookPermissions() public pure override returns (Hooks.Permissions memory) {
+        return Hooks.Permissions({
+            beforeInitialize: true, // Validate settings
+            beforeAddLiquidity: true, // Disallow adding liquidity
+            beforeSwap: true, // Handle wrapping/unwrapping
+            beforeSwapReturnDelta: true, // Async Swap via the vault
+            afterSwap: false,
+            afterInitialize: false,
+            beforeRemoveLiquidity: false,
+            afterAddLiquidity: false,
+            afterRemoveLiquidity: false,
+            beforeDonate: false,
+            afterDonate: false,
+            afterSwapReturnDelta: false,
+            afterAddLiquidityReturnDelta: false,
+            afterRemoveLiquidityReturnDelta: false
+        });
     }
 
-    function beforeInitialize(
+    function _beforeInitialize(
         address,
         PoolKey calldata poolKey,
         uint160
-    ) external view override returns (bytes4) {
+    ) internal view override returns (bytes4) {
         if (poolKey.fee != 0) {
             revert Generic4626Router__InvalidPoolFee();
         }
@@ -113,28 +115,24 @@ contract Generic4626Router is BaseHook, DeltaResolver {
         return IHooks.beforeInitialize.selector;
     }
 
-    function beforeAddLiquidity(
+    function _beforeAddLiquidity(
         address,
         PoolKey calldata,
         IPoolManager.ModifyLiquidityParams calldata,
         bytes calldata
-    ) external pure override returns (bytes4) {
+    ) internal pure override returns (bytes4) {
         revert Generic4626Router__NotAllowed();
     }
 
-    function beforeSwap(
+    function _beforeSwap(
         address,
         PoolKey calldata poolKey,
         IPoolManager.SwapParams calldata params,
         bytes calldata
     )
-        external
+        internal
         override
-        returns (
-            bytes4 selector,
-            BeforeSwapDelta swapDelta,
-            uint24 lpFeeOverride
-        )
+        returns (bytes4 selector, BeforeSwapDelta swapDelta, uint24 lpFeeOverride)
     {
         PoolId poolId = poolKey.toId();
         PoolDetails memory details = poolDetails[poolId];
@@ -147,74 +145,57 @@ contract Generic4626Router is BaseHook, DeltaResolver {
         if (params.zeroForOne == details.wrapDirection) {
             uint256 inputAmount = isExactInput
                 ? uint256(-params.amountSpecified)
-                : _getUnderlyingForShares(
-                    details.vault,
-                    uint256(params.amountSpecified)
-                );
+                : _getUnderlyingForShares(details.vault, uint256(params.amountSpecified));
 
-            _take(
+            CurrencySettler.take(
                 Currency.wrap(address(details.underlying)),
+                poolManager,
                 address(this),
-                inputAmount
+                inputAmount,
+                false
             );
 
-            uint256 shares = _deposit(
-                details.underlying,
-                details.vault,
-                inputAmount
+            uint256 shares = _deposit(details.underlying, details.vault, inputAmount);
+
+            CurrencySettler.settle(
+                Currency.wrap(address(details.vault)), poolManager, address(this), shares, false
             );
 
-            _settle(
-                Currency.wrap(address(details.vault)),
-                address(this),
-                shares
-            );
+            int128 amountUnspecified =
+                isExactInput ? -shares.toInt256().toInt128() : inputAmount.toInt256().toInt128();
 
-            int128 amountUnspecified = isExactInput
-                ? -shares.toInt256().toInt128()
-                : inputAmount.toInt256().toInt128();
-
-            swapDelta = toBeforeSwapDelta(
-                -params.amountSpecified.toInt128(),
-                amountUnspecified
-            );
+            swapDelta = toBeforeSwapDelta(-params.amountSpecified.toInt128(), amountUnspecified);
         } else {
             uint256 inputAmount = isExactInput
                 ? uint256(-params.amountSpecified)
-                : _getSharesForUnderlying(
-                    details.vault,
-                    uint256(params.amountSpecified)
-                );
+                : _getSharesForUnderlying(details.vault, uint256(params.amountSpecified));
 
-            _take(
+            CurrencySettler.take(
                 Currency.wrap(address(details.vault)),
+                poolManager,
                 address(this),
-                inputAmount
+                inputAmount,
+                false
             );
 
             uint256 underlyingAmount = _withdraw(details.vault, inputAmount);
 
-            _settle(
+            CurrencySettler.settle(
                 Currency.wrap(address(details.underlying)),
+                poolManager,
                 address(this),
-                underlyingAmount
+                underlyingAmount,
+                false
             );
 
             int128 amountUnspecified = isExactInput
                 ? -underlyingAmount.toInt256().toInt128()
                 : inputAmount.toInt256().toInt128();
 
-            swapDelta = toBeforeSwapDelta(
-                -params.amountSpecified.toInt128(),
-                amountUnspecified
-            );
+            swapDelta = toBeforeSwapDelta(-params.amountSpecified.toInt128(), amountUnspecified);
         }
 
         return (IHooks.beforeSwap.selector, swapDelta, 0);
-    }
-
-    function _pay(Currency token, address, uint256 amount) internal override {
-        token.transfer(address(poolManager), amount);
     }
 
     function _deposit(
@@ -228,10 +209,7 @@ contract Generic4626Router is BaseHook, DeltaResolver {
         return vault.deposit(underlyingAmount, address(this));
     }
 
-    function _withdraw(
-        ERC4626 vault,
-        uint256 shares
-    ) internal returns (uint256 underlyingAmount) {
+    function _withdraw(ERC4626 vault, uint256 shares) internal returns (uint256 underlyingAmount) {
         return vault.redeem(shares, address(this), address(this));
     }
 

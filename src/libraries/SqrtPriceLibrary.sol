@@ -11,24 +11,31 @@ library SqrtPriceLibrary {
     /// @dev The exchange rate is in WAD format, e.g. 1e18 tokens exchange for 1.04e18 ETH
     /// @param exchangeRateWad The exchange rate in WAD format
     /// @return sqrtPriceX96 The sqrt price in sqrtX96 format
-    function exchangeRateToSqrtPriceX96(uint256 exchangeRateWad) internal pure returns (uint160 sqrtPriceX96) {
+    function exchangeRateToSqrtPriceX96(
+        uint256 exchangeRateWad
+    ) internal pure returns (uint160 sqrtPriceX96) {
         return fractionToSqrtPriceX96(1e18, exchangeRateWad);
     }
 
     /// @notice returns sqrt(numerator / denominator) * Q96
-    function fractionToSqrtPriceX96(uint256 numerator, uint256 denominator)
-        internal
-        pure
-        returns (uint160 sqrtPriceX96)
-    {
+    function fractionToSqrtPriceX96(
+        uint256 numerator,
+        uint256 denominator
+    ) internal pure returns (uint160 sqrtPriceX96) {
         // sqrtPriceX96 = sqrt(numerator / denominator) * Q96)
         // sqrtPriceX96 = sqrt(numerator) * 2^96 / sqrt(denominator)
-        return uint160(FixedPointMathLib.sqrt(numerator) * Q96 / FixedPointMathLib.sqrt(denominator));
+        return
+            uint160(FixedPointMathLib.sqrt(numerator) * Q96 / FixedPointMathLib.sqrt(denominator));
     }
 
     /// @notice Calculates the absolute difference between two sqrt prices
-    function absDifferenceX96(uint160 sqrtPriceAX96, uint160 sqrtPriceBX96) internal pure returns (uint160) {
-        return sqrtPriceAX96 < sqrtPriceBX96 ? (sqrtPriceBX96 - sqrtPriceAX96) : (sqrtPriceAX96 - sqrtPriceBX96);
+    function absDifferenceX96(
+        uint160 sqrtPriceAX96,
+        uint160 sqrtPriceBX96
+    ) internal pure returns (uint160) {
+        return sqrtPriceAX96 < sqrtPriceBX96
+            ? (sqrtPriceBX96 - sqrtPriceAX96)
+            : (sqrtPriceAX96 - sqrtPriceBX96);
     }
 
     /// @notice Divides two sqrtPriceX96 values, retaining sqrtX96 precision
@@ -44,7 +51,10 @@ library SqrtPriceLibrary {
     /// @param sqrtPriceX96 The first sqrt price
     /// @param denominatorX96 The denominator for the percentage difference
     /// @return The percentage difference in WAD units
-    function absPercentageDifferenceWad(uint160 sqrtPriceX96, uint160 denominatorX96) internal pure returns (uint256) {
+    function absPercentageDifferenceWad(
+        uint160 sqrtPriceX96,
+        uint160 denominatorX96
+    ) internal pure returns (uint256) {
         uint256 _divX96 = divX96(sqrtPriceX96, denominatorX96);
 
         // convert to WAD

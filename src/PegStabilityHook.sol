@@ -10,10 +10,15 @@ import {StateLibrary} from "v4-core/src/libraries/StateLibrary.sol";
 abstract contract PegStabilityHook is BaseOverrideFee {
     using StateLibrary for IPoolManager;
 
-    constructor(IPoolManager _poolManager) BaseOverrideFee(_poolManager) {}
+    constructor(
+        IPoolManager _poolManager
+    ) BaseOverrideFee(_poolManager) {}
 
     /// @dev return a reference price in sqrtX96 format, sqrt(currency1 / currency0) * 2**96
-    function _referencePriceX96(Currency currency0, Currency currency1) internal virtual returns (uint160);
+    function _referencePriceX96(
+        Currency currency0,
+        Currency currency1
+    ) internal virtual returns (uint160);
 
     /// @dev return a swap fee given currencies, direction, pool price, and reference price
     /// @return fee in pips, i.e. 3000 = 0.3%
@@ -25,12 +30,12 @@ abstract contract PegStabilityHook is BaseOverrideFee {
         uint160 referenceSqrtPriceX96
     ) internal virtual returns (uint24);
 
-    function _getFee(address, PoolKey calldata key, IPoolManager.SwapParams calldata params, bytes calldata)
-        internal
-        virtual
-        override
-        returns (uint24)
-    {
+    function _getFee(
+        address,
+        PoolKey calldata key,
+        IPoolManager.SwapParams calldata params,
+        bytes calldata
+    ) internal virtual override returns (uint24) {
         (uint160 sqrtPriceX96,,,) = poolManager.getSlot0(key.toId());
         return _calculateFee(
             key.currency0,

@@ -12,21 +12,28 @@ contract SqrtPriceLibraryTest is Test {
     function test_fuzz_absDifferenceX96(uint160 sqrtPriceAX96, uint160 sqrtPriceBX96) public pure {
         uint160 result = SqrtPriceLibrary.absDifferenceX96(sqrtPriceAX96, sqrtPriceBX96);
         assertEq(
-            result, sqrtPriceAX96 < sqrtPriceBX96 ? (sqrtPriceBX96 - sqrtPriceAX96) : (sqrtPriceAX96 - sqrtPriceBX96)
+            result,
+            sqrtPriceAX96 < sqrtPriceBX96
+                ? (sqrtPriceBX96 - sqrtPriceAX96)
+                : (sqrtPriceAX96 - sqrtPriceBX96)
         );
     }
 
     function test_percentageDifferenceWad_1() public pure {
         uint256 numeratorX96 = FixedPointMathLib.sqrt(107e18) * SqrtPriceLibrary.Q96;
         uint256 denominatorX96 = FixedPointMathLib.sqrt(100e18) * SqrtPriceLibrary.Q96;
-        uint256 result = SqrtPriceLibrary.absPercentageDifferenceWad(uint160(numeratorX96), uint160(denominatorX96));
+        uint256 result = SqrtPriceLibrary.absPercentageDifferenceWad(
+            uint160(numeratorX96), uint160(denominatorX96)
+        );
         assertApproxEqRel(result, 0.07e18, 0.00001e18);
     }
 
     function test_percentageDifferenceWad_2() public pure {
         uint256 numeratorX96 = FixedPointMathLib.sqrt(93e18) * SqrtPriceLibrary.Q96;
         uint256 denominatorX96 = FixedPointMathLib.sqrt(100e18) * SqrtPriceLibrary.Q96;
-        uint256 result = SqrtPriceLibrary.absPercentageDifferenceWad(uint160(numeratorX96), uint160(denominatorX96));
+        uint256 result = SqrtPriceLibrary.absPercentageDifferenceWad(
+            uint160(numeratorX96), uint160(denominatorX96)
+        );
         assertApproxEqRel(result, 0.07e18, 0.00001e18);
     }
 
@@ -38,13 +45,16 @@ contract SqrtPriceLibraryTest is Test {
 
     function test_fuzz_percentageDifferenceWad(uint256 price, uint256 targetWad) public pure {
         price = bound(price, 0.00001e18, 100_000_000e18);
-        uint160 sqrtPriceX96 =
-            uint160(FixedPointMathLib.sqrt(price) * SqrtPriceLibrary.Q96 / FixedPointMathLib.sqrt(1e18));
+        uint160 sqrtPriceX96 = uint160(
+            FixedPointMathLib.sqrt(price) * SqrtPriceLibrary.Q96 / FixedPointMathLib.sqrt(1e18)
+        );
 
         // multiplier to determine the newSqrtPriceX96
         targetWad = bound(targetWad, 0.00001e18, 5e18);
-        uint160 newSqrtPriceX96 =
-            uint160((uint256(sqrtPriceX96) * FixedPointMathLib.sqrt(targetWad)) / FixedPointMathLib.sqrt(1e18));
+        uint160 newSqrtPriceX96 = uint160(
+            (uint256(sqrtPriceX96) * FixedPointMathLib.sqrt(targetWad))
+                / FixedPointMathLib.sqrt(1e18)
+        );
         vm.assume(newSqrtPriceX96 < TickMath.MAX_SQRT_PRICE);
         vm.assume(newSqrtPriceX96 > TickMath.MIN_SQRT_PRICE);
 
@@ -66,7 +76,10 @@ contract SqrtPriceLibraryTest is Test {
         sqrtPriceX96 = SqrtPriceLibrary.exchangeRateToSqrtPriceX96(exchangeRateWad);
         // 10 bips of error
         assertApproxEqAbs(
-            sqrtPriceX96, 77689605131987355976724378426, SqrtPriceLibrary.fractionToSqrtPriceX96(0.001e18, 1e18), "1.04"
+            sqrtPriceX96,
+            77689605131987355976724378426,
+            SqrtPriceLibrary.fractionToSqrtPriceX96(0.001e18, 1e18),
+            "1.04"
         );
 
         exchangeRateWad = 1.04444444444444e18;
@@ -106,7 +119,9 @@ contract SqrtPriceLibraryTest is Test {
         SqrtPriceLibrary.fractionToSqrtPriceX96(numerator, denominator);
     }
 
-    function test_fuzz_exchangeRateToSqrtPriceX96(uint256 exchangeRateWad) public pure {
+    function test_fuzz_exchangeRateToSqrtPriceX96(
+        uint256 exchangeRateWad
+    ) public pure {
         exchangeRateWad = bound(exchangeRateWad, 1e18, 10_000_000e18);
         SqrtPriceLibrary.exchangeRateToSqrtPriceX96(exchangeRateWad);
     }
