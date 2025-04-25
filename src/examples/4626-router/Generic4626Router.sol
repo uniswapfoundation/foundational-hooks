@@ -145,8 +145,6 @@ contract Generic4626Router is BaseHook {
                 ERC20(Currency.unwrap(underlying)), ERC4626(Currency.unwrap(vault)), inputAmount
             );
 
-            vault.settle(poolManager, address(this), shares, false);
-
             amountUnspecified =
                 isExactInput ? -shares.toInt256().toInt128() : inputAmount.toInt256().toInt128();
         } else {
@@ -158,9 +156,9 @@ contract Generic4626Router is BaseHook {
 
             vault.take(poolManager, address(this), inputAmount, false);
 
-            uint256 underlyingAmount = _withdraw(ERC4626(Currency.unwrap(vault)), inputAmount);
-
-            underlying.settle(poolManager, address(this), underlyingAmount, false);
+            uint256 underlyingAmount = _withdraw(
+                ERC20(Currency.unwrap(underlying)), ERC4626(Currency.unwrap(vault)), inputAmount
+            );
 
             amountUnspecified = isExactInput
                 ? -underlyingAmount.toInt256().toInt128()
@@ -196,24 +194,32 @@ contract Generic4626Router is BaseHook {
             underlying.approve(address(vault), underlyingAmount);
         }
 
-        return vault.deposit(underlyingAmount, address(this));
+        poolManager.sync(Currency.wrap(address(vault)));
+        shares = vault.deposit(underlyingAmount, address(poolManager));
+        poolManager.settle();
     }
 
-    function _withdraw(ERC4626 vault, uint256 shares) internal returns (uint256 underlyingAmount) {
-        return vault.redeem(shares, address(this), address(this));
+    function _withdraw(
+        ERC20 underlying,
+        ERC4626 vault,
+        uint256 shares
+    ) internal returns (uint256 underlyingAmount) {
+        poolManager.sync(Currency.wrap(address(underlying)));
+        underlyingAmount = vault.redeem(shares, address(poolManager), address(this));
+        poolManager.settle();
     }
 
     function _getUnderlyingForShares(
         ERC4626 vault,
         uint256 shares
-    ) internal view returns (uint256 underlyingAmount) {
+    ) internal view returns (uint256) {
         return vault.convertToAssets(shares);
     }
 
     function _getSharesForUnderlying(
         ERC4626 vault,
         uint256 underlyingAmount
-    ) internal view returns (uint256 shares) {
+    ) internal view returns (uint256) {
         return vault.convertToShares(underlyingAmount);
     }
 }
