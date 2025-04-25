@@ -24,6 +24,7 @@ import {ERC4626, ERC20} from "solmate/src/mixins/ERC4626.sol";
 /// @title Generic Router for ERC4626 Token Wrappers
 /// @dev Only supports symmetric ERC4626 Vaults
 contract Generic4626Router is BaseHook {
+    using CurrencySettler for Currency;
     using SafeCast for int256;
     using SafeCast for uint256;
 
@@ -33,8 +34,6 @@ contract Generic4626Router is BaseHook {
     struct PoolDetails {
         bool isInitialized;
         bool wrapDirection; // true if zeroToOne, false if oneToZero
-        ERC4626 vault;
-        ERC20 underlying;
     }
 
     mapping(PoolId poolId => PoolDetails details) public poolDetails;
@@ -63,14 +62,9 @@ contract Generic4626Router is BaseHook {
 
         poolId = poolKey.toId();
 
-        poolDetails[poolId] = PoolDetails({
-            isInitialized: true,
-            wrapDirection: wrapZeroForOne,
-            vault: vault,
-            underlying: underlying
-        });
+        poolDetails[poolId] = PoolDetails({isInitialized: true, wrapDirection: wrapZeroForOne});
+        underlying.approve(address(vault), type(uint256).max);
 
-        // TODO: I wonder if pool price is truly irrelevant here
         poolManager.initialize(poolKey, 2 ** 96);
     }
 
@@ -129,73 +123,68 @@ contract Generic4626Router is BaseHook {
         PoolKey calldata poolKey,
         IPoolManager.SwapParams calldata params,
         bytes calldata
-    )
-        internal
-        override
-        returns (bytes4 selector, BeforeSwapDelta swapDelta, uint24 lpFeeOverride)
-    {
+    ) internal override returns (bytes4, BeforeSwapDelta, uint24) {
         PoolId poolId = poolKey.toId();
         PoolDetails memory details = poolDetails[poolId];
 
         bool isExactInput = params.amountSpecified < 0;
+        int128 amountUnspecified;
 
-        // This following section is hard to follow, I initially wrote this with currency0 and currency1
-        // but it was truly impossible to follow. Ended up storing the vault and underlying.
-        // Although, I think I got a hang of it so might go back
+        (Currency vault, Currency underlying) = _getVaultUnderlying(poolKey, details.wrapDirection);
+
         if (params.zeroForOne == details.wrapDirection) {
             uint256 inputAmount = isExactInput
                 ? uint256(-params.amountSpecified)
-                : _getUnderlyingForShares(details.vault, uint256(params.amountSpecified));
+                : _getUnderlyingForShares(
+                    ERC4626(Currency.unwrap(vault)), uint256(params.amountSpecified)
+                );
 
-            CurrencySettler.take(
-                Currency.wrap(address(details.underlying)),
-                poolManager,
-                address(this),
-                inputAmount,
-                false
+            underlying.take(poolManager, address(this), inputAmount, false);
+
+            uint256 shares = _deposit(
+                ERC20(Currency.unwrap(underlying)), ERC4626(Currency.unwrap(vault)), inputAmount
             );
 
-            uint256 shares = _deposit(details.underlying, details.vault, inputAmount);
+            vault.settle(poolManager, address(this), shares, false);
 
-            CurrencySettler.settle(
-                Currency.wrap(address(details.vault)), poolManager, address(this), shares, false
-            );
-
-            int128 amountUnspecified =
+            amountUnspecified =
                 isExactInput ? -shares.toInt256().toInt128() : inputAmount.toInt256().toInt128();
-
-            swapDelta = toBeforeSwapDelta(-params.amountSpecified.toInt128(), amountUnspecified);
         } else {
             uint256 inputAmount = isExactInput
                 ? uint256(-params.amountSpecified)
-                : _getSharesForUnderlying(details.vault, uint256(params.amountSpecified));
+                : _getSharesForUnderlying(
+                    ERC4626(Currency.unwrap(vault)), uint256(params.amountSpecified)
+                );
 
-            CurrencySettler.take(
-                Currency.wrap(address(details.vault)),
-                poolManager,
-                address(this),
-                inputAmount,
-                false
-            );
+            vault.take(poolManager, address(this), inputAmount, false);
 
-            uint256 underlyingAmount = _withdraw(details.vault, inputAmount);
+            uint256 underlyingAmount = _withdraw(ERC4626(Currency.unwrap(vault)), inputAmount);
 
-            CurrencySettler.settle(
-                Currency.wrap(address(details.underlying)),
-                poolManager,
-                address(this),
-                underlyingAmount,
-                false
-            );
+            underlying.settle(poolManager, address(this), underlyingAmount, false);
 
-            int128 amountUnspecified = isExactInput
+            amountUnspecified = isExactInput
                 ? -underlyingAmount.toInt256().toInt128()
                 : inputAmount.toInt256().toInt128();
-
-            swapDelta = toBeforeSwapDelta(-params.amountSpecified.toInt128(), amountUnspecified);
         }
 
-        return (IHooks.beforeSwap.selector, swapDelta, 0);
+        return (
+            IHooks.beforeSwap.selector,
+            toBeforeSwapDelta(-params.amountSpecified.toInt128(), amountUnspecified),
+            0
+        );
+    }
+
+    function _getVaultUnderlying(
+        PoolKey calldata poolKey,
+        bool wrapDirection
+    ) internal pure returns (Currency vault, Currency underlying) {
+        if (wrapDirection) {
+            vault = poolKey.currency1;
+            underlying = poolKey.currency0;
+        } else {
+            vault = poolKey.currency0;
+            underlying = poolKey.currency1;
+        }
     }
 
     function _deposit(
@@ -203,8 +192,9 @@ contract Generic4626Router is BaseHook {
         ERC4626 vault,
         uint256 underlyingAmount
     ) internal returns (uint256 shares) {
-        // TODO: Is it worth protecting from lingering approvals, or just approve max in initializer?
-        underlying.approve(address(vault), underlyingAmount);
+        if (underlying.allowance(address(this), address(vault)) < underlyingAmount) {
+            underlying.approve(address(vault), underlyingAmount);
+        }
 
         return vault.deposit(underlyingAmount, address(this));
     }
