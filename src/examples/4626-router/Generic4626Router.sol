@@ -191,7 +191,7 @@ contract Generic4626Router is BaseHook {
         uint256 underlyingAmount
     ) internal returns (uint256 shares) {
         if (underlying.allowance(address(this), address(vault)) < underlyingAmount) {
-            underlying.approve(address(vault), underlyingAmount);
+            underlying.approve(address(vault), type(uint256).max);
         }
 
         poolManager.sync(Currency.wrap(address(vault)));
