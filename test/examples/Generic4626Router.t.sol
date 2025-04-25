@@ -78,9 +78,9 @@ contract Generic4626RouterTest is Deployers {
         vault.deposit(1000 ether, bob);
     }
 
-    function test_wrapping_exactInput() public {
-        uint256 wrapAmount = 1 ether;
-        uint256 expectedOutput = vault.convertToShares(wrapAmount);
+    function test_Wrap_exactInput() public {
+        uint256 amount = 1 ether;
+        uint256 expectedOutput = vault.convertToShares(amount);
 
         vm.startPrank(alice);
         asset.approve(address(minimalRouter), type(uint256).max);
@@ -90,12 +90,78 @@ contract Generic4626RouterTest is Deployers {
         uint256 managerAssetBefore = asset.balanceOf(address(manager));
         uint256 managerVaultBefore = vault.balanceOf(address(manager));
 
-        minimalRouter.swap(key, true, wrapAmount, 0, "");
+        minimalRouter.swap(key, true, amount, 0, "");
 
         vm.stopPrank();
 
-        assertEq(aliceAssetBefore - asset.balanceOf(alice), wrapAmount);
+        assertEq(aliceAssetBefore - asset.balanceOf(alice), amount);
         assertEq(vault.balanceOf(alice) - aliceVaultBefore, expectedOutput);
+        assertEq(managerAssetBefore, asset.balanceOf(address(manager)));
+        assertEq(managerVaultBefore, vault.balanceOf(address(manager)));
+    }
+
+    function test_Unwrap_exactInput() public {
+        uint256 amount = 1 ether;
+        uint256 expectedOutput = vault.convertToAssets(amount);
+
+        vm.startPrank(alice);
+        vault.approve(address(minimalRouter), type(uint256).max);
+
+        uint256 aliceAssetBefore = asset.balanceOf(alice);
+        uint256 aliceVaultBefore = vault.balanceOf(alice);
+        uint256 managerAssetBefore = asset.balanceOf(address(manager));
+        uint256 managerVaultBefore = vault.balanceOf(address(manager));
+
+        minimalRouter.swap(key, false, amount, 0, "");
+
+        vm.stopPrank();
+
+        assertEq(asset.balanceOf(alice) - aliceAssetBefore, expectedOutput);
+        assertEq(aliceVaultBefore - vault.balanceOf(alice), amount);
+        assertEq(managerAssetBefore, asset.balanceOf(address(manager)));
+        assertEq(managerVaultBefore, vault.balanceOf(address(manager)));
+    }
+
+    function test_Wrap_exactOutput() public {
+        uint256 amount = 1 ether;
+        uint256 expectedOutput = vault.convertToShares(amount);
+
+        vm.startPrank(alice);
+        asset.approve(address(minimalRouter), type(uint256).max);
+
+        uint256 aliceAssetBefore = asset.balanceOf(alice);
+        uint256 aliceVaultBefore = vault.balanceOf(alice);
+        uint256 managerAssetBefore = asset.balanceOf(address(manager));
+        uint256 managerVaultBefore = vault.balanceOf(address(manager));
+
+        minimalRouter.swap(key, true, amount, expectedOutput, "");
+
+        vm.stopPrank();
+
+        assertEq(aliceAssetBefore - asset.balanceOf(alice), amount);
+        assertEq(vault.balanceOf(alice) - aliceVaultBefore, expectedOutput);
+        assertEq(managerAssetBefore, asset.balanceOf(address(manager)));
+        assertEq(managerVaultBefore, vault.balanceOf(address(manager)));
+    }
+
+    function test_Unwrap_exactOutput() public {
+        uint256 amount = 1 ether;
+        uint256 expectedOutput = vault.convertToAssets(amount);
+
+        vm.startPrank(alice);
+        vault.approve(address(minimalRouter), type(uint256).max);
+
+        uint256 aliceAssetBefore = asset.balanceOf(alice);
+        uint256 aliceVaultBefore = vault.balanceOf(alice);
+        uint256 managerAssetBefore = asset.balanceOf(address(manager));
+        uint256 managerVaultBefore = vault.balanceOf(address(manager));
+
+        minimalRouter.swap(key, false, amount, expectedOutput, "");
+
+        vm.stopPrank();
+
+        assertEq(asset.balanceOf(alice) - aliceAssetBefore, expectedOutput);
+        assertEq(aliceVaultBefore - vault.balanceOf(alice), amount);
         assertEq(managerAssetBefore, asset.balanceOf(address(manager)));
         assertEq(managerVaultBefore, vault.balanceOf(address(manager)));
     }
