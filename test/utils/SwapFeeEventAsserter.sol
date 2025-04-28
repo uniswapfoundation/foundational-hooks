@@ -11,10 +11,14 @@ library SwapFeeEventAsserter {
     bytes32 internal constant SWAP_EVENT_SIGNATURE =
         keccak256("Swap(bytes32,address,int128,int128,uint160,uint128,int24,uint24)");
 
-    function getSwapFeeFromEvent(Vm.Log[] memory recordedLogs) internal pure returns (uint24 fee) {
+    function getSwapFeeFromEvent(
+        Vm.Log[] memory recordedLogs
+    ) internal pure returns (uint24 fee) {
         for (uint256 i; i < recordedLogs.length; i++) {
             if (recordedLogs[i].topics[0] == SWAP_EVENT_SIGNATURE) {
-                (,,,,, fee) = abi.decode(recordedLogs[i].data, (int128, int128, uint160, uint128, int24, uint24));
+                (,,,,, fee) = abi.decode(
+                    recordedLogs[i].data, (int128, int128, uint160, uint128, int24, uint24)
+                );
                 break;
             }
         }

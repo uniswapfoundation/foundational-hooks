@@ -75,17 +75,23 @@ contract ParityStabilityTest is Deployers {
             exactIn
                 ? assertEq(int256(result.amount0()), amountSpecified)
                 : assertLt(int256(result.amount0()), amountSpecified);
-            exactIn ? assertGt(int256(result.amount1()), 0) : assertEq(int256(result.amount1()), amountSpecified);
+            exactIn
+                ? assertGt(int256(result.amount1()), 0)
+                : assertEq(int256(result.amount1()), amountSpecified);
         } else {
             exactIn
                 ? assertEq(int256(result.amount1()), amountSpecified)
                 : assertLt(int256(result.amount1()), amountSpecified);
-            exactIn ? assertGt(int256(result.amount0()), 0) : assertEq(int256(result.amount0()), amountSpecified);
+            exactIn
+                ? assertGt(int256(result.amount0()), 0)
+                : assertEq(int256(result.amount0()), amountSpecified);
         }
     }
 
     /// @dev swaps moving away from peg are charged a high fee
-    function test_fuzz_high_fee(bool zeroForOne) public {
+    function test_fuzz_high_fee(
+        bool zeroForOne
+    ) public {
         vm.recordLogs();
         BalanceDelta ref = swap(key, zeroForOne, -int256(0.1e18), ZERO_BYTES);
         Vm.Log[] memory recordedLogs = vm.getRecordedLogs();
@@ -108,7 +114,9 @@ contract ParityStabilityTest is Deployers {
     }
 
     /// @dev swaps moving towards peg are charged a low fee
-    function test_fuzz_low_fee(bool zeroForOne) public {
+    function test_fuzz_low_fee(
+        bool zeroForOne
+    ) public {
         // move the pool price to off peg
         swap(key, !zeroForOne, -int256(1000e18), ZERO_BYTES);
 
