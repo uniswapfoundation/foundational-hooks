@@ -33,7 +33,7 @@ contract Generic4626Router is BaseHook {
 
     struct PoolDetails {
         bool isInitialized;
-        bool wrapDirection; // true if zeroToOne, false if oneToZero
+        bool wrapsZeroToOne;
     }
 
     mapping(PoolId poolId => PoolDetails details) public poolDetails;
@@ -62,7 +62,7 @@ contract Generic4626Router is BaseHook {
 
         poolId = poolKey.toId();
 
-        poolDetails[poolId] = PoolDetails({isInitialized: true, wrapDirection: wrapZeroForOne});
+        poolDetails[poolId] = PoolDetails({isInitialized: true, wrapsZeroToOne: wrapZeroForOne});
         underlying.approve(address(vault), type(uint256).max);
 
         poolManager.initialize(poolKey, 2 ** 96);
@@ -130,9 +130,9 @@ contract Generic4626Router is BaseHook {
         bool isExactInput = params.amountSpecified < 0;
         int128 amountUnspecified;
 
-        (Currency vault, Currency underlying) = _getVaultUnderlying(poolKey, details.wrapDirection);
+        (Currency vault, Currency underlying) = _getVaultUnderlying(poolKey, details.wrapsZeroToOne);
 
-        if (params.zeroForOne == details.wrapDirection) {
+        if (params.zeroForOne == details.wrapsZeroToOne) {
             uint256 inputAmount = isExactInput
                 ? uint256(-params.amountSpecified)
                 : _getUnderlyingForShares(
@@ -174,9 +174,9 @@ contract Generic4626Router is BaseHook {
 
     function _getVaultUnderlying(
         PoolKey calldata poolKey,
-        bool wrapDirection
+        bool wrapsZeroToOne
     ) internal pure returns (Currency vault, Currency underlying) {
-        if (wrapDirection) {
+        if (wrapsZeroToOne) {
             vault = poolKey.currency1;
             underlying = poolKey.currency0;
         } else {
