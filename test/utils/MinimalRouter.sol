@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {CurrencyLibrary, Currency} from "v4-core/src/types/Currency.sol";
-import {IPoolManager} from "v4-core/src/interfaces/IPoolManager.sol";
+import {IPoolManager, SwapParams} from "v4-core/src/interfaces/IPoolManager.sol";
 import {BalanceDelta, toBalanceDelta} from "v4-core/src/types/BalanceDelta.sol";
 import {PoolKey} from "v4-core/src/types/PoolKey.sol";
 import {IHooks} from "v4-core/src/interfaces/IHooks.sol";
@@ -69,7 +69,7 @@ contract MinimalRouter is SafeCallback {
         // execute the swap
         poolManager.swap(
             key,
-            IPoolManager.SwapParams({
+            SwapParams({
                 zeroForOne: zeroForOne,
                 amountSpecified: amountOut != 0 ? int256(amountOut) : -int256(amountIn),
                 sqrtPriceLimitX96: zeroForOne ? MIN_PRICE_LIMIT : MAX_PRICE_LIMIT

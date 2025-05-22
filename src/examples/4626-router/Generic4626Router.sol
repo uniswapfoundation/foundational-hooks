@@ -12,7 +12,11 @@ import {PoolId} from "v4-core/src/types/PoolId.sol";
 import {SafeCast} from "v4-core/src/libraries/SafeCast.sol";
 import {IHooks} from "v4-core/src/interfaces/IHooks.sol";
 import {Hooks} from "v4-core/src/libraries/Hooks.sol";
-import {IPoolManager} from "v4-core/src/interfaces/IPoolManager.sol";
+import {
+    IPoolManager,
+    ModifyLiquidityParams,
+    SwapParams
+} from "v4-core/src/interfaces/IPoolManager.sol";
 
 import {BaseHook} from "uniswap-hooks/base/BaseHook.sol";
 import {CurrencySettler} from "uniswap-hooks/utils/CurrencySettler.sol";
@@ -112,7 +116,7 @@ contract Generic4626Router is BaseHook {
     function _beforeAddLiquidity(
         address,
         PoolKey calldata,
-        IPoolManager.ModifyLiquidityParams calldata,
+        ModifyLiquidityParams calldata,
         bytes calldata
     ) internal pure override returns (bytes4) {
         revert Generic4626Router__NotAllowed();
@@ -121,7 +125,7 @@ contract Generic4626Router is BaseHook {
     function _beforeSwap(
         address,
         PoolKey calldata poolKey,
-        IPoolManager.SwapParams calldata params,
+        SwapParams calldata params,
         bytes calldata
     ) internal override returns (bytes4, BeforeSwapDelta, uint24) {
         PoolId poolId = poolKey.toId();

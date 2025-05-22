@@ -14,3 +14,6 @@ via_ir = false
 [fmt]
 line_length = 100
 multiline_func_header = "params_first"
+
+[rpc_endpoints]
+base = "https://base.merkle.io"

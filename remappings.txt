@@ -1,1 +1,2 @@
 @uniswap/v4-core/=lib/uniswap-hooks/lib/v4-core/
+v4-core/=lib/uniswap-hooks/lib/v4-core/

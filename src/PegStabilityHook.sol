@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {BaseOverrideFee} from "uniswap-hooks/fee/BaseOverrideFee.sol";
-import {IPoolManager} from "v4-core/src/interfaces/IPoolManager.sol";
+import {IPoolManager, SwapParams} from "v4-core/src/interfaces/IPoolManager.sol";
 import {PoolKey} from "v4-core/src/types/PoolKey.sol";
 import {Currency} from "v4-core/src/types/Currency.sol";
 import {StateLibrary} from "v4-core/src/libraries/StateLibrary.sol";
@@ -33,7 +33,7 @@ abstract contract PegStabilityHook is BaseOverrideFee {
     function _getFee(
         address,
         PoolKey calldata key,
-        IPoolManager.SwapParams calldata params,
+        SwapParams calldata params,
         bytes calldata
     ) internal virtual override returns (uint24) {
         (uint160 sqrtPriceX96,,,) = poolManager.getSlot0(key.toId());
